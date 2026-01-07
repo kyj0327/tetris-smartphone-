@@ -15,36 +15,29 @@
     align-items: center;
     height: 100vh;
   }
-  .game-container {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
   canvas {
     background: #000;
     border: 2px solid #fff;
-    max-width: 100%;
+    width: 100%;
+    max-width: 480px;
     height: auto;
   }
   .controls-container {
-    width: 100%;
     display: flex;
     justify-content: center;
     gap: 20px;
+    flex-wrap: wrap;
     padding: 15px;
     background: rgba(0,0,0,0.6);
-    flex-wrap: wrap;
   }
   .controls-container button {
-    width: 90px;
-    height: 90px;
-    background: #333;
-    color: #fff;
+    width: 80px;
+    height: 80px;
     font-size: 24px;
     border-radius: 50%;
     border: 3px solid #fff;
-    font-weight: bold;
+    background: #333;
+    color: #fff;
   }
   .dpad {
     display: grid;
@@ -73,30 +66,22 @@
 </style>
 </head>
 <body>
-<div class="game-container">
-  <canvas id="tetris" width="480" height="800"></canvas>
-</div>
+<canvas id="tetris" width="240" height="400"></canvas>
 
 <div class="controls-container">
-  <!-- 일시정지 -->
   <button onclick="togglePause()">⏸</button>
-
-  <!-- D-Pad -->
   <div class="dpad">
     <button style="grid-area: up;" onclick="rotateClock()">▲</button>
     <button style="grid-area: left;" onclick="moveLeft()">◀</button>
     <button style="grid-area: right;" onclick="moveRight()">▶</button>
     <button style="grid-area: down;" onclick="softDrop()">▼</button>
   </div>
-
-  <!-- 홀드 / 하드드롭 -->
   <button onclick="holdBlock()">H</button>
   <button onclick="hardDrop()">↓↓</button>
 </div>
 
 <div id="score">점수: 0</div>
 
-<!-- 게임 오버 모달 -->
 <div id="gameOverModal">
   <h1>게임 오버</h1>
   <p id="finalScore"></p>
@@ -104,38 +89,149 @@
 </div>
 
 <script>
-/* 모바일 전용 테트리스 로직 */
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
-context.scale(40, 40);
+context.scale(20, 20);
 
 const arena = createMatrix(12, 20);
-let score = 0, holdPiece = null, canHold = true, isPaused = false, gameOver = false;
+let score = 0, isPaused = false, gameOver = false;
+let player = {pos:{x:0,y:0}, matrix:null};
 let nextQueue = [];
 
 function createMatrix(w,h){const m=[];while(h--)m.push(new Array(w).fill(0));return m;}
-function createPiece(t){if(t==='T')return[[0,0,0],[1,1,1],[0,1,0]];if(t==='O')return[[2,2],[2,2]];
-if(t==='L')return[[0,3,0],[0,3,0],[0,3,3]];if(t==='J')return[[0,4,0],[0,4,0],[4,4,0]];
-if(t==='I')return[[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]];if(t==='S')return[[0,6,6],[6,6,0],[0,0,0]];
-if(t==='Z')return[[7,7,0],[0,7,7],[0,0,0]];}
-function drawMatrix(m,o){m.forEach((r,y)=>r.forEach((v,x)=>{if(v){context.fillStyle=colors[v];context.fillRect(x+o.x,y+o.y,1,1);}});}
-function draw(){context.fillStyle='#000';context.fillRect(0,0,canvas.width,canvas.height);drawMatrix(arena,{x:0,y:0});drawMatrix(player.matrix,player.pos);}
-const colors=[null,'#800080','#FFD700','#FFA500','#0000FF','#008000','#7CFC00','#FF0000'];
-const player={pos:{x:0,y:0},matrix:null};initNextQueue();playerReset();
-function initNextQueue(){while(nextQueue.length<5)nextQueue.push(randomPiece());}
-function randomPiece(){return'TJLOSZI'[Math.floor(Math.random()*7)];}
-function playerReset(){player.matrix=createPiece(nextQueue.shift());nextQueue.push(randomPiece());player.pos.y=0;player.pos.x=(arena[0].length/2|0)-(player.matrix[0].length/2|0);}
-function playerDrop(){player.pos.y++;if(collide(arena,player)){player.pos.y--;lockPiece();}dropCounter=0;}
-function lockPiece(){merge(arena,player);playerReset();arenaSweep();updateScore();if(gameOverCheck())showGameOver();canHold=true;}
-function merge(arena,p){p.matrix.forEach((r,y)=>r.forEach((v,x)=>{if(v)arena[y+p.pos.y][x+p.pos.x]=v;}));}
-function collide(arena,p){const m=p.matrix,o=p.pos;for(let y=0;y<m.length;y++){for(let x=0;x<m[y].length;x++){if(m[y][x]&&(arena[y+o.y]&&arena[y+o.y][x+o.x])!==0)return true;}}return false;}
-function rotate(m,d){for(let y=0;y<m.length;y++){for(let x=0;x<y;x++){[m[x][y],m[y][x]]=[m[y][x],m[x][y]];}}if(d>0)m.forEach(r=>r.reverse());else m.reverse();}
-function playerRotate(d){const pos=player.pos.x;let offset=1;rotate(player.matrix,d);while(collide(arena,player)){player.pos.x+=offset;offset=-(offset+(offset>0?1:-1));if(offset>player.matrix[0].length){rotate(player.matrix,-d);player.pos.x=pos;return;}}}
+function createPiece(type){
+  if(type==='T')return[[0,0,0],[1,1,1],[0,1,0]];
+  if(type==='O')return[[2,2],[2,2]];
+  if(type==='L')return[[0,3,0],[0,3,0],[0,3,3]];
+  if(type==='J')return[[0,4,0],[0,4,0],[4,4,0]];
+  if(type==='I')return[[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]];
+  if(type==='S')return[[0,6,6],[6,6,0],[0,0,0]];
+  if(type==='Z')return[[7,7,0],[0,7,7],[0,0,0]];
+}
+function drawMatrix(matrix, offset){
+  matrix.forEach((row,y)=>{
+    row.forEach((value,x)=>{
+      if(value!==0){
+        context.fillStyle = colors[value];
+        context.fillRect(x+offset.x,y+offset.y,1,1);
+      }
+    });
+  });
+}
+function draw(){
+  context.fillStyle='#000';
+  context.fillRect(0,0,canvas.width,canvas.height);
+  drawMatrix(arena,{x:0,y:0});
+  drawMatrix(player.matrix,player.pos);
+}
+function merge(arena,player){
+  player.matrix.forEach((row,y)=>{
+    row.forEach((value,x)=>{
+      if(value!==0){
+        arena[y+player.pos.y][x+player.pos.x]=value;
+      }
+    });
+  });
+}
+function collide(arena,player){
+  const m=player.matrix,o=player.pos;
+  for(let y=0;y<m.length;y++){
+    for(let x=0;x<m[y].length;x++){
+      if(m[y][x]!==0&&(arena[y+o.y]&&arena[y+o.y][x+o.x])!==0){
+        return true;
+      }
+    }
+  }
+  return false;
+}
+function playerDrop(){
+  player.pos.y++;
+  if(collide(arena,player)){
+    player.pos.y--;
+    merge(arena,player);
+    playerReset();
+    arenaSweep();
+    updateScore();
+    if(gameOverCheck())showGameOver();
+  }
+  dropCounter=0;
+}
+function playerHardDrop(){
+  while(!collide(arena,player)){player.pos.y++;}
+  player.pos.y--;
+  merge(arena,player);
+  playerReset();
+  arenaSweep();
+  updateScore();
+  if(gameOverCheck())showGameOver();
+}
+function playerReset(){
+  const pieces='TJLOSZI';
+  player.matrix=createPiece(pieces[Math.floor(Math.random()*pieces.length)]);
+  player.pos.y=0;
+  player.pos.x=(arena[0].length/2|0)-(player.matrix[0].length/2|0);
+}
+function rotate(matrix,dir){
+  for(let y=0;y<matrix.length;y++){
+    for(let x=0;x<y;x++){
+      [matrix[x][y],matrix[y][x]]=[matrix[y][x],matrix[x][y]];
+    }
+  }
+  if(dir>0)matrix.forEach(row=>row.reverse());
+  else matrix.reverse();
+}
+function playerRotate(dir){
+  const pos=player.pos.x;
+  let offset=1;
+  rotate(player.matrix,dir);
+  while(collide(arena,player)){
+    player.pos.x+=offset;
+    offset=-(offset+(offset>0?1:-1));
+    if(offset>player.matrix[0].length){
+      rotate(player.matrix,-dir);
+      player.pos.x=pos;
+      return;
+    }
+  }
+}
+function arenaSweep(){
+  let rowCount=1;
+  for(let y=arena.length-1;y>=0;y--){
+    if(arena[y].every(value=>value!==0)){
+      arena.splice(y,1);
+      arena.unshift(new Array(arena[0].length).fill(0));
+      score+=rowCount*10;
+      rowCount*=2;
+    }
+  }
+}
+function gameOverCheck(){return arena[0].some(value=>value!==0);}
 function updateScore(){document.getElementById('score').innerText='점수: '+score;}
-function showGameOver(){gameOver=true;document.getElementById('finalScore').innerText='최종 점수: '+score;document.getElementById('gameOverModal').style.display='block';}
-function restartGame(){arena.forEach(r=>r.fill(0));score=0;updateScore();holdPiece=null;nextQueue=[];initNextQueue();playerReset();gameOver=false;document.getElementById('gameOverModal').style.display='none';update();}
+function showGameOver(){
+  gameOver=true;
+  document.getElementById('finalScore').innerText='최종 점수: '+score;
+  document.getElementById('gameOverModal').style.display='block';
+}
+function restartGame(){
+  arena.forEach(row=>row.fill(0));
+  score=0;
+  updateScore();
+  playerReset();
+  gameOver=false;
+  document.getElementById('gameOverModal').style.display='none';
+  update();
+}
+const colors=[null,'#800080','#FFD700','#FFA500','#0000FF','#008000','#7CFC00','#FF0000'];
 let dropCounter=0,dropInterval=1000,lastTime=0;
-function update(time=0){if(isPaused||gameOver)return requestAnimationFrame(update);const dt=time-lastTime;lastTime=time;dropCounter+=dt;if(dropCounter>dropInterval)playerDrop();draw();requestAnimationFrame(update);}
+function update(time=0){
+  if(isPaused||gameOver)return requestAnimationFrame(update);
+  const deltaTime=time-lastTime;
+  lastTime=time;
+  dropCounter+=deltaTime;
+  if(dropCounter>dropInterval)playerDrop();
+  draw();
+  requestAnimationFrame(update);
+}
 update();
 
 /* 모바일 버튼 기능 */
@@ -144,7 +240,7 @@ function moveRight(){if(!isPaused&&!gameOver){player.pos.x++;if(collide(arena,pl
 function softDrop(){if(!isPaused&&!gameOver)playerDrop();}
 function rotateClock(){if(!isPaused&&!gameOver)playerRotate(1);}
 function hardDrop(){if(!isPaused&&!gameOver)playerHardDrop();}
-function holdBlock(){if(!isPaused&&!gameOver)holdCurrentPiece();}
+function holdBlock(){/* 홀드 기능 구현 가능 (현재는 생략) */}
 function togglePause(){isPaused=!isPaused;}
 </script>
 </body>
