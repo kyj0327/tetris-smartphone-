@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>모바일 테트리스</title>
+<style>
+  body {
+    margin: 0;
+    background: #222;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+  }
+  .game-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  canvas {
+    background: #000;
+    border: 2px solid #fff;
+  }
+  .controls-container {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: rgba(0,0,0,0.6);
+  }
+  /* 왼쪽 컨트롤 */
+  .left-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .pause-btn {
+    width: 50px;
+    height: 30px;
+    font-size: 14px;
+    background: #555;
+    color: #fff;
+    border: 2px solid #fff;
+    border-radius: 6px;
+  }
+  .dpad {
+    display: grid;
+    grid-template-areas:
+      ". up ."
+      "left center right"
+      ". down .";
+    gap: 5px;
+  }
+  .dpad button {
+    width: 50px;
+    height: 50px;
+    background: #333;
+    color: #fff;
+    font-size: 18px;
+    border-radius: 8px;
+    border: 2px solid #fff;
+  }
+  /* 오른쪽 컨트롤 */
+  .right-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .right-controls button {
+    width: 80px;
+    height: 50px;
+    font-size: 16px;
+    background: #333;
+    color: #fff;
+    border-radius: 8px;
+    border: 2px solid #fff;
+  }
+  #score {
+    margin: 10px;
+    font-size: 20px;
+  }
+  #gameOverModal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9);
+    padding: 30px;
+    border: 2px solid #fff;
+    display: none;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="game-container">
+  <canvas id="tetris" width="480" height="800"></canvas>
+</div>
+
+<div class="controls-container">
+  <!-- 왼쪽 컨트롤 -->
+  <div class="left-controls">
+    <button class="pause-btn" onclick="togglePause()">⏸</button>
+    <div class="dpad">
+      <button style="grid-area: up;" onclick="rotateClock()">▲</button>
+      <button style="grid-area: left;" onclick="moveLeft()">◀</button>
+      <button style="grid-area: right;" onclick="moveRight()">▶</button>
+      <button style="grid-area: down;" onclick="softDrop()">▼</button>
+    </div>
+  </div>
+  <!-- 오른쪽 컨트롤 -->
+  <div class="right-controls">
+    <button onclick="holdBlock()">홀드</button>
+    <button onclick="hardDrop()">하드드롭</button>
+  </div>
+</div>
+
+<div id="score">점수: 0</div>
+
+<!-- 게임 오버 모달 -->
+<div id="gameOverModal">
+  <h1>게임 오버</h1>
+  <p id="finalScore"></p>
+  <button onclick="restartGame()">재시작</button>
+</div>
+
+<script>
+/* 기본 테트리스 로직 */
+const canvas = document.getElementById('tetris');
+const context = canvas.getContext('2d');
+context.scale(40, 40);
+
+const arena = createMatrix(12, 20);
+let score = 0, holdPiece = null, canHold = true, isPaused = false, gameOver = false;
+let nextQueue = [];
+
+function createMatrix(w,h){const m=[];while(h--)m.push(new Array(w).fill(0));return m;}
+function createPiece(t){if(t==='T')return[[0,0,0],[1,1,1],[0,1,0]];if(t==='O')return[[2,2],[2,2]];
+if(t==='L')return[[0,3,0],[0,3,0],[0,3,3]];if(t==='J')return[[0,4,0],[0,4,0],[4,4,0]];
+if(t==='I')return[[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]];if(t==='S')return[[0,6,6],[6,6,0],[0,0,0]];
+if(t==='Z')return[[7,7,0],[0,7,7],[0,0,0]];}
+function drawMatrix(m,o){m.forEach((r,y)=>r.forEach((v,x)=>{if(v){context.fillStyle=colors[v];context.fillRect(x+o.x,y+o.y,1,1);}});}
+function draw(){context.fillStyle='#000';context.fillRect(0,0,canvas.width,canvas.height);drawMatrix(arena,{x:0,y:0});drawMatrix(player.matrix,player.pos);}
+const colors=[null,'#800080','#FFD700','#FFA500','#0000FF','#008000','#7CFC00','#FF0000'];
+const player={pos:{x:0,y:0},matrix:null};initNextQueue();playerReset();
+function initNextQueue(){while(nextQueue.length<5)nextQueue.push(randomPiece());}
+function randomPiece(){return'TJLOSZI'[Math.floor(Math.random()*7)];}
+function playerReset(){player.matrix=createPiece(nextQueue.shift());nextQueue.push(randomPiece());player.pos.y=0;player.pos.x=(arena[0].length/2|0)-(player.matrix[0].length/2|0);}
+function playerDrop(){player.pos.y++;if(collide(arena,player)){player.pos.y--;lockPiece();}dropCounter=0;}
+function lockPiece(){merge(arena,player);playerReset();arenaSweep();updateScore();if(gameOverCheck())showGameOver();canHold=true;}
+function merge(arena,p){p.matrix.forEach((r,y)=>r.forEach((v,x)=>{if(v)arena[y+p.pos.y][x+p.pos.x]=v;}));}
+function collide(arena,p){const m=p.matrix,o=p.pos;for(let y=0;y<m.length;y++){for(let x=0;x<m[y].length;x++){if(m[y][x]&&(arena[y+o.y]&&arena[y+o.y][x+o.x])!==0)return true;}}return false;}
+function rotate(m,d){for(let y=0;y<m.length;y++){for(let x=0;x<y;x++){[m[x][y],m[y][x]]=[m[y][x],m[x][y]];}}if(d>0)m.forEach(r=>r.reverse());else m.reverse();}
+function playerRotate(d){const pos=player.pos.x;let offset=1;rotate(player.matrix,d);while(collide(arena,player)){player.pos.x+=offset;offset=-(offset+(offset>0?1:-1));if(offset>player.matrix[0].length){rotate(player.matrix,-d);player.pos.x=pos;return;}}}
+function updateScore(){document.getElementById('score').innerText='점수: '+score;}
+function showGameOver(){gameOver=true;document.getElementById('finalScore').innerText='최종 점수: '+score;document.getElementById('gameOverModal').style.display='block';}
+function restartGame(){arena.forEach(r=>r.fill(0));score=0;updateScore();holdPiece=null;nextQueue=[];initNextQueue();playerReset();gameOver=false;document.getElementById('gameOverModal').style.display='none';update();}
+let dropCounter=0,dropInterval=1000,lastTime=0;
+function update(time=0){if(isPaused||gameOver)return requestAnimationFrame(update);const dt=time-lastTime;lastTime=time;dropCounter+=dt;if(dropCounter>dropInterval)playerDrop();draw();requestAnimationFrame(update);}
+update();
+
+/* 모바일 버튼 기능 */
+function moveLeft(){if(!isPaused&&!gameOver){player.pos.x--;if(collide(arena,player))player.pos.x++;}}
+function moveRight(){if(!isPaused&&!gameOver){player.pos.x++;if(collide(arena,player))player.pos.x--;}}
+function softDrop(){if(!isPaused&&!gameOver)playerDrop();}
+function rotateClock(){if(!isPaused&&!gameOver)playerRotate(1);}
+function hardDrop(){if(!isPaused&&!gameOver)playerHardDrop();}
+function holdBlock(){if(!isPaused&&!gameOver)holdCurrentPiece();}
+function togglePause(){isPaused=!isPaused;}
+</script>
+</body>
+</html>
+``
