@@ -30,57 +30,34 @@
   .controls-container {
     width: 100%;
     display: flex;
-    justify-content: space-between;
-    padding: 10px;
+    justify-content: center;
+    gap: 20px;
+    padding: 15px;
     background: rgba(0,0,0,0.6);
-    box-sizing: border-box;
+    flex-wrap: wrap;
   }
-  /* 왼쪽: 일시정지 버튼 */
-  .pause-btn {
-    width: 60px;
-    height: 60px;
-    background: #555;
+  .controls-container button {
+    width: 90px;
+    height: 90px;
+    background: #333;
     color: #fff;
-    font-size: 20px;
+    font-size: 24px;
     border-radius: 50%;
-    border: 2px solid #fff;
+    border: 3px solid #fff;
+    font-weight: bold;
   }
-  /* 중앙: D-Pad */
   .dpad {
     display: grid;
     grid-template-areas:
       ". up ."
       "left center right"
       ". down .";
-    gap: 5px;
-  }
-  .dpad button {
-    width: 60px;
-    height: 60px;
-    background: #333;
-    color: #fff;
-    font-size: 24px;
-    border-radius: 50%;
-    border: 2px solid #fff;
-  }
-  /* 오른쪽: 홀드 / 하드드롭 */
-  .right-controls {
-    display: flex;
-    flex-direction: column;
     gap: 10px;
-  }
-  .right-controls button {
-    width: 70px;
-    height: 70px;
-    font-size: 18px;
-    background: #444;
-    color: #fff;
-    border-radius: 50%;
-    border: 2px solid #fff;
   }
   #score {
     margin: 10px;
-    font-size: 20px;
+    font-size: 24px;
+    font-weight: bold;
   }
   #gameOverModal {
     position: fixed;
@@ -101,10 +78,10 @@
 </div>
 
 <div class="controls-container">
-  <!-- 왼쪽: 일시정지 -->
-  <button class="pause-btn" onclick="togglePause()">⏸</button>
+  <!-- 일시정지 -->
+  <button onclick="togglePause()">⏸</button>
 
-  <!-- 중앙: D-Pad -->
+  <!-- D-Pad -->
   <div class="dpad">
     <button style="grid-area: up;" onclick="rotateClock()">▲</button>
     <button style="grid-area: left;" onclick="moveLeft()">◀</button>
@@ -112,11 +89,9 @@
     <button style="grid-area: down;" onclick="softDrop()">▼</button>
   </div>
 
-  <!-- 오른쪽: 홀드 / 하드드롭 -->
-  <div class="right-controls">
-    <button onclick="holdBlock()">홀드</button>
-    <button onclick="hardDrop()">↓↓</button>
-  </div>
+  <!-- 홀드 / 하드드롭 -->
+  <button onclick="holdBlock()">H</button>
+  <button onclick="hardDrop()">↓↓</button>
 </div>
 
 <div id="score">점수: 0</div>
