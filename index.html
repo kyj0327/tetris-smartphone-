@@ -24,6 +24,8 @@
   canvas {
     background: #000;
     border: 2px solid #fff;
+    max-width: 100%;
+    height: auto;
   }
   .controls-container {
     width: 100%;
@@ -31,23 +33,19 @@
     justify-content: space-between;
     padding: 10px;
     background: rgba(0,0,0,0.6);
+    box-sizing: border-box;
   }
-  /* 왼쪽 컨트롤 */
-  .left-controls {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
+  /* 왼쪽: 일시정지 버튼 */
   .pause-btn {
-    width: 50px;
-    height: 30px;
-    font-size: 14px;
+    width: 60px;
+    height: 60px;
     background: #555;
     color: #fff;
+    font-size: 20px;
+    border-radius: 50%;
     border: 2px solid #fff;
-    border-radius: 6px;
   }
+  /* 중앙: D-Pad */
   .dpad {
     display: grid;
     grid-template-areas:
@@ -57,27 +55,27 @@
     gap: 5px;
   }
   .dpad button {
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
     background: #333;
     color: #fff;
-    font-size: 18px;
-    border-radius: 8px;
+    font-size: 24px;
+    border-radius: 50%;
     border: 2px solid #fff;
   }
-  /* 오른쪽 컨트롤 */
+  /* 오른쪽: 홀드 / 하드드롭 */
   .right-controls {
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
   .right-controls button {
-    width: 80px;
-    height: 50px;
-    font-size: 16px;
-    background: #333;
+    width: 70px;
+    height: 70px;
+    font-size: 18px;
+    background: #444;
     color: #fff;
-    border-radius: 8px;
+    border-radius: 50%;
     border: 2px solid #fff;
   }
   #score {
@@ -103,20 +101,21 @@
 </div>
 
 <div class="controls-container">
-  <!-- 왼쪽 컨트롤 -->
-  <div class="left-controls">
-    <button class="pause-btn" onclick="togglePause()">⏸</button>
-    <div class="dpad">
-      <button style="grid-area: up;" onclick="rotateClock()">▲</button>
-      <button style="grid-area: left;" onclick="moveLeft()">◀</button>
-      <button style="grid-area: right;" onclick="moveRight()">▶</button>
-      <button style="grid-area: down;" onclick="softDrop()">▼</button>
-    </div>
+  <!-- 왼쪽: 일시정지 -->
+  <button class="pause-btn" onclick="togglePause()">⏸</button>
+
+  <!-- 중앙: D-Pad -->
+  <div class="dpad">
+    <button style="grid-area: up;" onclick="rotateClock()">▲</button>
+    <button style="grid-area: left;" onclick="moveLeft()">◀</button>
+    <button style="grid-area: right;" onclick="moveRight()">▶</button>
+    <button style="grid-area: down;" onclick="softDrop()">▼</button>
   </div>
-  <!-- 오른쪽 컨트롤 -->
+
+  <!-- 오른쪽: 홀드 / 하드드롭 -->
   <div class="right-controls">
     <button onclick="holdBlock()">홀드</button>
-    <button onclick="hardDrop()">하드드롭</button>
+    <button onclick="hardDrop()">↓↓</button>
   </div>
 </div>
 
@@ -130,7 +129,7 @@
 </div>
 
 <script>
-/* 기본 테트리스 로직 */
+/* 모바일 전용 테트리스 로직 */
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
 context.scale(40, 40);
@@ -175,4 +174,3 @@ function togglePause(){isPaused=!isPaused;}
 </script>
 </body>
 </html>
-``
